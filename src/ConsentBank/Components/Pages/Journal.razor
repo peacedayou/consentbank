@@ -15,7 +15,7 @@
     @foreach (var e in entries)
     {
         <tr><td>@e.At.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td><td>@e.Type</td><td>@e.Actor</td><td>@e.Detail</td>
-            <td><code>@e.Hash[..12]…</code></td></tr>
+            <td><code>@(e.Hash[..12])…</code></td></tr>
     }
 </table>
 
