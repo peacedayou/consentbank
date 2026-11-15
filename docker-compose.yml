@@ -1,0 +1,16 @@
+# Démo locale : docker compose up --build, puis http://localhost:8080/portail
+# Secrets de démonstration à définir dans un fichier .env (non versionné) :
+#   DEMO_MOT_DE_PASSE=...   DEMO_SECRET_CLIENT=...
+services:
+  consentbank:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      Demo__MotDePasse: ${DEMO_MOT_DE_PASSE:?définissez DEMO_MOT_DE_PASSE dans .env}
+      Demo__SecretClient: ${DEMO_SECRET_CLIENT:?définissez DEMO_SECRET_CLIENT dans .env}
+      Securite__ExigerHttps: "false"   # démo en HTTP local seulement ; à laisser à true derrière un proxy TLS
+    volumes:
+      - donnees:/data
+volumes:
+  donnees:

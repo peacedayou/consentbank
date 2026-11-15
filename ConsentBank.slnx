@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/ConsentBank/ConsentBank.csproj" />
+  <Project Path="tests/ConsentBank.Tests/ConsentBank.Tests.csproj" />
+</Solution>

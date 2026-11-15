@@ -1,0 +1,38 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Tests (parcours OAuth complet, révocation, audit)
+        run: dotnet test tests/ConsentBank.Tests/ConsentBank.Tests.csproj --logger "console;verbosity=normal"
+      - name: Paquets vulnérables
+        run: dotnet list src/ConsentBank/ConsentBank.csproj package --vulnerable --include-transitive 2>&1 | tee vuln.txt && ! grep -q "has the following vulnerable packages" vuln.txt
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v5
+      - name: Image et démarrage
+        run: |
+          docker build -t consentbank .
+          docker run -d --name cb -p 8080:8080 \
+            -e Demo__MotDePasse="$(openssl rand -hex 16)" -e Demo__SecretClient="$(openssl rand -hex 24)" \
+            -e Securite__ExigerHttps=false consentbank
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/sante && break; sleep 2; done
+          curl -sf http://localhost:8080/ | grep -q ConsentBank
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/comptes); test "$code" = 401
+      - if: failure()
+        run: docker logs cb

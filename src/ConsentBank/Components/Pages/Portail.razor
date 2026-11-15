@@ -1,0 +1,60 @@
+@page "/portail"
+@attribute [Authorize]
+@inject ConsentService Consents
+
+<PageTitle>Mes consentements – ConsentBank</PageTitle>
+<h1>Mes consentements</h1>
+<p>Les applications ci-dessous peuvent lire les données que vous avez choisies. Retirez un accès à tout moment :
+l'application perd l'accès immédiatement, même avec un jeton encore valide.</p>
+
+@if (message is not null)
+{
+    <p class="ok">@message</p>
+}
+@if (items.Count == 0)
+{
+    <p class="note">Aucun consentement pour le moment.</p>
+}
+@foreach (var c in items)
+{
+    var active = c.IsActiveAt(DateTimeOffset.UtcNow);
+    <article class="card @(active ? "" : "off")">
+        <h2>@c.ClientName</h2>
+        <p class="meta">
+            Accordé le @c.GrantedAt.ToLocalTime().ToString("d MMMM yyyy", Fr) ·
+            @(c.Status == ConsentStatus.Revoked ? $"révoqué le {c.RevokedAt?.ToLocalTime().ToString("d MMMM yyyy", Fr)}"
+               : active ? $"expire le {c.ExpiresAt.ToLocalTime().ToString("d MMMM yyyy", Fr)}" : "expiré")
+        </p>
+        <ul>@foreach (var s in c.Scopes) { <li>@(ConsentService.ScopeLabels.GetValueOrDefault(s, s))</li> }</ul>
+        <p class="meta">Comptes : @string.Join(", ", c.AccountIds)</p>
+        @if (active)
+        {
+            <form method="post" @formname="@($"revoquer-{c.Id}")" @onsubmit="() => Revoke(c.Id)">
+                <AntiforgeryToken />
+                <button class="danger">Retirer l'accès</button>
+            </form>
+        }
+    </article>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Fr = new("fr-CA");
+
+    [CascadingParameter] private HttpContext Http { get; set; } = default!;
+
+    private List<Consent> items = [];
+    private string? message;
+
+    private Guid CustomerId => Guid.Parse(Http.User.FindFirst("sub")!.Value);
+
+    protected override async Task OnInitializedAsync() => items = await Consents.ListAsync(CustomerId);
+
+    private async Task Revoke(Guid id)
+    {
+        if (await Consents.RevokeAsync(id, CustomerId))
+        {
+            message = "Accès retiré.";
+        }
+        items = await Consents.ListAsync(CustomerId);
+    }
+}

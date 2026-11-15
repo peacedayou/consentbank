@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr-CA"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ConsentBank – partage de données bancaires avec consentement</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16202c;--mut:#5b6672;--line:#dfe3e8;--acc:#0b5ed7;--ok:#1f7a3f;--no:#9a6700}
+@media (prefers-color-scheme:dark){:root{--bg:#11151a;--card:#181e25;--ink:#e6e9ed;--mut:#9aa4af;--line:#2a323c;--acc:#79a9ff;--ok:#6fd49a;--no:#e3b341}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:40px 20px 64px}h1{font-size:34px;margin:0 0 6px}.lead{color:var(--mut)}
+ol.flow{counter-reset:s;list-style:none;padding:0}ol.flow li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px 12px 52px;margin:10px 0;position:relative}
+ol.flow li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;font-weight:700;line-height:26px}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}td,th{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.ok{color:var(--ok);font-weight:600}.no{color:var(--no);font-weight:600}code{font:14px ui-monospace,Menlo,Consolas,monospace}a{color:var(--acc)}
+</style></head><body><main>
+<h1>ConsentBank</h1>
+<p class="lead">API de partage de données bancaires avec consentement du client, dans l'esprit du cadre fédéral
+des services bancaires axés sur les consommateurs : le client choisit quoi partager, avec qui et pour combien de temps,
+et peut tout retirer en un clic. ASP.NET Core 10, OpenIddict, portail Blazor. Données fictives.</p>
+
+<h2>Le parcours</h2>
+<ol class="flow">
+<li><b>Requête poussée (PAR).</b> L'application « Budget Futé » envoie sa demande au serveur, côté serveur, avec son secret et le défi PKCE (<code>S256</code>). Elle reçoit un <code>request_uri</code> à usage limité.</li>
+<li><b>Autorisation.</b> Le navigateur du client arrive sur <code>/connect/authorize</code> avec ce seul <code>request_uri</code> : aucun paramètre sensible dans l'adresse.</li>
+<li><b>Connexion</b> du client à sa banque (cookie sécurisé, formulaire protégé contre le CSRF).</li>
+<li><b>Consentement explicite.</b> Le client voit l'application, ce qu'elle pourra lire, choisit les comptes partagés et la durée (30, 90 ou 365 jours), puis autorise ou refuse.</li>
+<li><b>Code puis jeton.</b> Le code (valide 1 minute, usage unique) est échangé contre un jeton d'accès de 10 minutes, seulement avec le bon vérificateur PKCE.</li>
+<li><b>Appel à l'API.</b> Chaque appel vérifie le jeton, la portée, l'autorisation OpenIddict et le consentement en base : seuls les comptes choisis sont visibles.</li>
+<li><b>Révocation.</b> Depuis le portail Blazor, le client retire l'accès : l'autorisation et ses jetons sont révoqués, l'appel suivant est refusé.</li>
+<li><b>Journal d'audit chaîné.</b> Chaque événement (consentement, jeton, consultation, révocation) est enregistré avec l'empreinte SHA-256 de l'entrée précédente : toute altération est détectée.</li>
+</ol>
+
+<h2>Exigences de sécurité (profil inspiré de FAPI 2.0)</h2>
+<table>
+<tr><th>Exigence</th><th>État</th></tr>
+<tr><td>Flux par code d'autorisation seulement</td><td class="ok">Fait</td></tr>
+<tr><td>PKCE avec S256, obligatoire</td><td class="ok">Fait</td></tr>
+<tr><td>Requêtes d'autorisation poussées (PAR), obligatoires</td><td class="ok">Fait</td></tr>
+<tr><td>Code à durée courte et usage unique ; jetons d'accès de 10 minutes</td><td class="ok">Fait</td></tr>
+<tr><td>Révocation immédiate et vérification de l'autorisation à chaque appel</td><td class="ok">Fait</td></tr>
+<tr><td>Jetons liés à l'émetteur (DPoP ou mTLS)</td><td class="no">Pas encore</td></tr>
+<tr><td>Authentification du client par clé (<code>private_key_jwt</code>) au lieu d'un secret</td><td class="no">Pas encore</td></tr>
+<tr><td>Clés de signature gérées (actuellement éphémères, démonstration)</td><td class="no">Pas encore</td></tr>
+</table>
+<p class="lead">Les tests automatisés rejouent le parcours complet à chaque modification : PAR, connexion, consentement,
+PKCE, code à usage unique, refus, expiration, révocation et intégrité du journal.
+Code source : <a href="https://github.com/peacedayou/consentbank">github.com/peacedayou/consentbank</a></p>
+</main></body></html>

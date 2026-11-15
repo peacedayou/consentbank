@@ -1,0 +1,35 @@
+@page "/portail/journal"
+@attribute [Authorize]
+@inject BankDbContext Db
+@inject AuditLog Audit
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Journal d'audit – ConsentBank</PageTitle>
+<h1>Journal d'audit</h1>
+<p class="@(broken is null ? "ok" : "err")">
+    @(broken is null ? "Chaîne intègre : aucune entrée n'a été modifiée ni supprimée."
+                     : $"Chaîne rompue à l'entrée {broken} : le journal a été altéré.")
+</p>
+<table>
+    <tr><th>Date</th><th>Événement</th><th>Acteur</th><th>Détail</th><th>Empreinte</th></tr>
+    @foreach (var e in entries)
+    {
+        <tr><td>@e.At.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td><td>@e.Type</td><td>@e.Actor</td><td>@e.Detail</td>
+            <td><code>@e.Hash[..12]…</code></td></tr>
+    }
+</table>
+
+@code {
+    [CascadingParameter] private HttpContext Http { get; set; } = default!;
+
+    private List<AuditEntry> entries = [];
+    private long? broken;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var id = Guid.Parse(Http.User.FindFirst("sub")!.Value);
+        entries = (await Db.Audit.AsNoTracking().Where(a => a.CustomerId == id).ToListAsync())
+            .OrderByDescending(a => a.Id).Take(200).ToList();
+        broken = await Audit.VerifyAsync();
+    }
+}
