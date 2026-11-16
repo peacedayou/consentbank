@@ -92,7 +92,7 @@ public partial class ConsentFlowTests : IDisposable
         Assert.StartsWith("/consentement/", consentUrl);
 
         var consentPage = await _browser.GetAsync(consentUrl);
-        var html = await consentPage.Content.ReadAsStringAsync();
+        var html = WebUtility.HtmlDecode(await consentPage.Content.ReadAsStringAsync());
         Assert.Contains("Budget Futé", html);
         var fields = new List<(string, string)> { ("decision", decision), ("duree", days.ToString()) };
         fields.AddRange(accounts.Select(a => ("comptes", a)));
@@ -257,7 +257,7 @@ public partial class ConsentFlowTests : IDisposable
     {
         await AccessToken("CHQ-001");
         var page = await _browser.GetAsync("/portail");
-        var html = await page.Content.ReadAsStringAsync();
+        var html = WebUtility.HtmlDecode(await page.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
         Assert.Contains("Budget Futé", html);
         Assert.Contains("Retirer l'accès", html);
