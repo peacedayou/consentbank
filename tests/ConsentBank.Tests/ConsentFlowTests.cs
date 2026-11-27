@@ -175,7 +175,7 @@ public partial class ConsentFlowTests : IDisposable
         {
             var db = scope.ServiceProvider.GetRequiredService<BankDbContext>();
             var c = await db.Consents.SingleAsync();
-            c.ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);   // consentement arrivé à échéance
+            c.ExpiresAt = _factory.Clock.GetUtcNow().AddSeconds(-1);   // échéance selon l'horloge de test (pas l'horloge réelle)
             await db.SaveChangesAsync();
         }
         Assert.Equal(HttpStatusCode.Forbidden, (await Api("/api/v1/comptes", token)).StatusCode);
